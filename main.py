@@ -101,12 +101,11 @@ def walk_directory_helper(input_dir, bar):
         return track_files
 
 ## GET TAGS OF FILES ##
-def get_tags(tracks, bar):
+def get_tags(tracks, tag_list, bar):
         tags = {}
         for track in tracks:
                 bar.text('Reading tags of ' + track)
-                tags[track] = taglib.File(track).tags
-                #print( tags[track].get("ALBUM") )
+                tag_list[track] = taglib.File(track).tags
                 bar()
         return tags
 
@@ -121,6 +120,7 @@ def get_tags_threaded(tracks):
                         bar.text('Awaiting ' + str(num_threads) + ' threads for tag processing')
 
                 # create workers
+                tag_list = {}
                 min = 1
                 for i in range(1, num_threads + 1):
                         max = int( (length / num_threads) * i )
@@ -128,7 +128,7 @@ def get_tags_threaded(tracks):
                                 print("\n\rCreating worker #" + str(i) + ": Items " + str(min) + " to " + str(max), end='')
                         thread = threading.Thread(
                                 target=get_tags,
-                                args=(tracks[min-1:max], bar)
+                                args=(tracks[min-1:max], tag_list, bar)
                         )
                         threads.append(thread)
                         min = max + 1
@@ -137,12 +137,12 @@ def get_tags_threaded(tracks):
                 for thread in threads:
                         thread.start()
 
-                tracks = {}
                 # await workers
                 for thread in threads:
                         thread.join()
                         num_threads -= 1
-                return tracks
+
+                return tag_list
 
 ## MAIN PROGRAM ##
 def main():
@@ -154,5 +154,25 @@ def main():
         # threaded tagging operations
         tracks = get_tags_threaded(tracks)
 
+        data = {} # tag : count
+        for track in tracks:
+                tag = tracks[track].get('GENRE')
+                if tag == None:
+                        tag = 'None'
+                else:
+                        tag = tag[0]
+                if data.get(tag) == None:
+                        data[tag] = 0
+                data[tag] = data[tag] + 1
+        print(data)
+
+        fig = plt.figure(figsize =(10, 7))
+        labels = []
+        numbers = []
+        for label in data:
+                labels.append(label)
+                numbers.append(data[label])
+        plt.pie(numbers, labels = labels)
+        plt.show()
 ## RUN THE PROGRAM ##
 main()
